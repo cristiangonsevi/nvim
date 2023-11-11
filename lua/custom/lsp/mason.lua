@@ -1,19 +1,19 @@
-local mason_lspconfig = require "mason-lspconfig"
-local servers = require "custom.lsp.servers"
-local lspconfig = require "lspconfig"
+local mason_lspconfig = require("mason-lspconfig")
+local servers = require("custom.lsp.servers")
+local lspconfig = require("lspconfig")
 
-local mason_servers = {}
+local mason_servers = { "gopls", "lua_ls", "tsserver" }
 
 for server, _ in pairs(servers) do
-  local cmd = lspconfig[server].cmd[1]
-  if vim.fn.executable(cmd) == 0 then
-    table.insert(mason_servers, server)
-  end
+	local cmd = lspconfig[server].cmd[1]
+	if vim.fn.executable(cmd) == 0 then
+		table.insert(mason_servers, server)
+	end
 end
 
-mason_lspconfig.setup {
-  -- ensure_installed = mason_servers,
-}
+mason_lspconfig.setup({
+	ensure_installed = mason_servers,
+})
 
 -- filter the list for the ones not globally installed
 -- require("mason-tool-installer").setup {

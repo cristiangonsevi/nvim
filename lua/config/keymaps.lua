@@ -1,3 +1,4 @@
 local key = vim.keymap
 
-key.set("n", "<leader>e", ":Ex<cR>", { desc = "Open file explorer"})
+
+key.set('t', '<Esc>', '<C-\\><C-n>', { desc = "Switch to normal mode"})

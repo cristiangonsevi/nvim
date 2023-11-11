@@ -1,7 +1,7 @@
 return {
   mason = {
     enable = true,
-    auto_install = false,
+    auto_install = true,
   },
   servers = {
     emmet_ls = { enable = true },
@@ -9,8 +9,6 @@ return {
     html = { enable = true },
     jsonls = { enable = true },
     lua_ls = { enable = true, neodev = true },
-    nil_ls = { enable = true },
-    rust_analyzer = { enable = true },
     svelte = { enable = true },
     tailwindcss = { enable = true, filetypes = {"blade", "html", "svelte"} },
     tsserver = { enable = true },

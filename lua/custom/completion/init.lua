@@ -1,50 +1,133 @@
-local map_tele = function(key, f, opts)
-  local default = {
-    mode = "n",
-    options = {},
-    buffer = nil,
-    desc = nil,
-  }
-  opts = opts or {}
-  opts = vim.tbl_deep_extend("force", default, opts or {})
+local cmp = require("cmp")
+local lspkind = require("lspkind")
+local luasnip = require("luasnip")
+local cmp_autopairs = require("nvim-autopairs.completion.cmp")
+local compare = require("cmp.config.compare")
 
-  local rhs = function()
-    R("custom.telescope")[f](opts.options)
-  end
+cmp.event:on("confirm_done", cmp_autopairs.on_confirm_done({ map_char = { tex = "" } }))
 
-  local map_options = {
-    remap = false,
-    silent = true,
-  }
-  if opts.buffer then
-    map_options.buffer = opts.buffer
-  end
-  if opts.desc then
-    map_options.desc = "Telescope: " .. opts.desc
-  end
+cmp.setup({
+	mapping = {
+		["<C-d>"] = cmp.mapping.scroll_docs(-4),
+		["<C-f>"] = cmp.mapping.scroll_docs(4),
+		["<C-e>"] = cmp.mapping(function(fallback)
+			if cmp.visible() then
+				cmp.close()
+			elseif luasnip.expand_or_jumpable() then
+				luasnip.expand_or_jump()
+			else
+				fallback()
+			end
+		end, { "i", "s" }),
+		["<C-n>"] = cmp.mapping(function(fallback)
+			if cmp.visible() then
+				cmp.select_next_item()
+			elseif luasnip.choice_active() then
+				luasnip.change_choice(1)
+			else
+				fallback()
+			end
+		end, { "i", "s" }),
+		["<C-p>"] = cmp.mapping.select_prev_item(),
+		["<C-y>"] = cmp.mapping.confirm({
+			behavior = cmp.ConfirmBehavior.Insert,
+			select = true,
+		}),
+		["<c-space>"] = cmp.mapping.complete(),
+	},
+	sources = {
+		{ name = "nvim_lua" },
+		{ name = "nvim_lsp" },
+		{ name = "path" },
+		{ name = "luasnip" },
+		{ name = "copilot" },
+		{
+			name = "buffer",
+			keyword_length = 4,
+			option = {
+				get_bufnrs = function()
+					local bufs = {}
+					for _, win in ipairs(vim.api.nvim_list_wins()) do
+						local bufnr = vim.api.nvim_win_get_buf(win)
+						if vim.api.nvim_buf_get_option(bufnr, "buftype") ~= "terminal" then
+							bufs[bufnr] = true
+						end
+					end
+					return vim.tbl_keys(bufs)
+				end,
+			},
+		},
+	},
 
-  vim.keymap.set(opts.mode, key, rhs, map_options)
-end
+	snippet = {
+		expand = function(args)
+			require("luasnip").lsp_expand(args.body)
+		end,
+	},
 
--- not shure what this line does
-vim.api.nvim_set_keymap(
-  "c",
-  "<c-r><c-r>",
-  "<Plug>(TelescopeFuzzyCommandSearch)",
-  { noremap = false, nowait = true, desc = "In comand look for previous commands" }
-)
+	formatting = {
+		format = lspkind.cmp_format({
+			with_text = true,
+			menu = {
+				buffer = "[buf]",
+				nvim_lsp = "[ ]",
+				nvim_lua = "[api]",
+				path = "[path]",
+				luasnip = "[snip]",
+				copilot = "[ﮧ ]",
+				["vim-dadbod-completion"] = "[DB]",
+			},
+		}),
+	},
 
-map_tele("<leader>pp", "project_files", { desc = "Open Project files" })
-map_tele("<leader>gc", "branches", { desc = "Git Branches selector" })
-map_tele("<leader>pw", "grep_word", { desc = "Grep word under cursor" })
-map_tele("<leader>ps", "grep_string", { desc = "Grep provided input string" })
-map_tele("<leader>rs", "scratchs", { desc = "Search Neovim Scratchs files" })
-map_tele("<leader>ph", "help_tags", { desc = "Neovim Help" })
-map_tele("<leader>pe", "buffers", { desc = "Open buffers" })
-map_tele("<leader>pr", "treesitter", { desc = "Treesitter buffer elements" })
-map_tele("<leader>bb", "file_browser_relative", { desc = "Current directory" })
-map_tele("<leader>bp", "file_browser", { desc = "Project directory" })
-map_tele("<leader>gs", "git_status", { desc = "Git status" })
-map_tele("<leader>ve", "diagnostics", { desc = "Diagnostic of the buffer" })
+	sorting = {
+		priority_weight = 2,
+		comparators = {
+			compare.kind,
+			compare.sort_text,
+		},
+	},
 
-return map_tele
+	experimental = {
+		native_menu = false,
+
+		ghost_text = false,
+	},
+})
+
+vim.api.nvim_set_hl(0, "CmpItemKindCopilot", { fg = "#6CC644" })
+
+-- Set configuration for specific filetype.
+cmp.setup.filetype("gitcommit", {
+	sources = cmp.config.sources({
+		{ name = "cmp_git" }, -- You can specify the `cmp_git` source if you were installed it.
+	}, {
+		{ name = "buffer" },
+	}),
+})
+
+-- Use buffer source for `/` (if you enabled `native_menu`, this won't work anymore).
+cmp.setup.cmdline("/", {
+	mapping = cmp.mapping.preset.cmdline(),
+	sources = {
+		{ name = "buffer" },
+	},
+})
+
+-- Use cmdline & path source for ':' (if you enabled `native_menu`, this won't work anymore).
+cmp.setup.cmdline(":", {
+	mapping = cmp.mapping.preset.cmdline(),
+	sources = cmp.config.sources({
+		{ name = "path" },
+	}, {
+		{ name = "cmdline" },
+	}),
+})
+
+cmp.setup.filetype({ "sql", "mysql", "plsql" }, {
+	sources = cmp.config.sources({
+		{ name = "vim-dadbod-completion" },
+	}, {
+		{ name = "buffer" },
+	}),
+})
